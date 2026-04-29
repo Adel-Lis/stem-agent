@@ -1,0 +1,14 @@
+[project]
+name = "stem-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=2.33.0",
+    "networkx>=3.6.1",
+    "pydantic>=2.13.3",
+    "python-dotenv>=1.2.2",
+    "duckduckgo-search>=8.1.1",
+    "pytest>=9.0.3",
+]
