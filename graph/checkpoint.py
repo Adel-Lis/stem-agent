@@ -5,11 +5,13 @@ from tools.registry import get_tool_codes, restore_tools_from_codes
 
 
 def _write_checkpoint(data: dict, filepath: str, label: str):
+    """Writes a graph dictionary to a JSON file on disk."""
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2)
     print(f"  Checkpoint saved: {os.path.basename(filepath)}")
 
 def save_checkpoint(graph: StemGraph, task_class: str, version: int):
+    """Saves the current graph as a versioned checkpoint file so progress is not lost between growth cycles."""
     folder = os.path.join("outputs", task_class.lower().replace(" ", "_"))
     os.makedirs(folder, exist_ok=True)
 
@@ -20,9 +22,7 @@ def save_checkpoint(graph: StemGraph, task_class: str, version: int):
     _write_checkpoint(data, filepath, f"v{version}")
 
 def save_final_checkpoint(graph: StemGraph, task_class: str):
-    """
-    Saves the fully-specialized graph as checkpoint_final.json.
-    """
+    """Saves the fully specialized graph as the final checkpoint, which the traverser will prefer over versioned files when running the agent."""
     folder = os.path.join("outputs", task_class.lower().replace(" ", "_"))
     os.makedirs(folder, exist_ok=True)
 
@@ -33,6 +33,7 @@ def save_final_checkpoint(graph: StemGraph, task_class: str):
     _write_checkpoint(data, filepath, "final")
 
 def _load_from_file(filepath: str) -> StemGraph:
+    """Reads a checkpoint JSON file and rebuilds the graph from it, also restoring any custom tools that were saved."""
     with open(filepath, "r") as f:
         data = json.load(f)
     tool_codes = data.pop("tool_codes", {})
@@ -41,11 +42,13 @@ def _load_from_file(filepath: str) -> StemGraph:
     return graph
 
 def load_checkpoint(task_class: str, version: int) -> StemGraph:
+    """Loads a specific versioned checkpoint for the given domain."""
     folder = os.path.join("outputs", task_class.lower().replace(" ", "_"))
     filepath = os.path.join(folder, f"checkpoint_v{version}.json")
     return _load_from_file(filepath)
 
 def load_latest_checkpoint(task_class: str) -> tuple[StemGraph, int | str]:
+    """Loads the best available checkpoint for a domain, it prefers the final one if it exists, otherwise falls back to the highest version number."""
     folder = os.path.join("outputs", task_class.lower().replace(" ", "_"))
 
     if not os.path.exists(folder):
@@ -67,6 +70,7 @@ def load_latest_checkpoint(task_class: str) -> tuple[StemGraph, int | str]:
     return load_checkpoint(task_class, latest), latest
 
 def rollback(task_class: str, current_version: int) -> StemGraph:
+    """Loads the checkpoint one version before the current one, used to undo a bad growth step."""
     if current_version <= 1:
         raise ValueError("This is the first version. There are no rollback options")
 

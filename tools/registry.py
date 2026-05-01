@@ -53,11 +53,13 @@ TOOL_CODE_REGISTRY: dict[str, str] = {}
 
 
 def get_tool(name: str) -> callable:
+    """Returns the callable tool function by name, raising an error if it hasn't been registered."""
     if name not in TOOL_REGISTRY:
         raise ValueError(f"Tool '{name}' is not in the Tool Registry")
     return TOOL_REGISTRY[name]
 
 def register_tool_from_code(name: str, code: str) -> bool:
+    """Takes a Python function as a string, runs it in a sandbox to make sure it works safely, and adds it to the registry if it passes."""
     try:
         namespace = {"__builtins__": _SAFE_BUILTINS}
         exec(code, namespace)
@@ -78,16 +80,20 @@ def register_tool_from_code(name: str, code: str) -> bool:
         return False
 
 def restore_tools_from_codes(tool_codes: dict[str, str]):
+    """Re-registers all custom tools from their saved source code, called when loading a checkpoint so the tools are available again."""
     for name, code in tool_codes.items():
         if name not in TOOL_REGISTRY:
             register_tool_from_code(name, code)
 
 def get_tool_codes() -> dict[str, str]:
+    """Returns the source code of all dynamically created tools so they can be saved in a checkpoint."""
     return dict(TOOL_CODE_REGISTRY)
 
 def register_tool(name: str, func: callable):
+    """Directly registers a callable function as a tool by name, for tools defined in code rather than generated at runtime."""
     TOOL_REGISTRY[name] = func
     print(f"  Tool registered: {name}")
 
 def list_tools() -> list[str]:
+    """Returns the names of all tools currently in the registry, so the builder knows what's already available."""
     return list(TOOL_REGISTRY.keys())

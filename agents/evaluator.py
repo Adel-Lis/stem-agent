@@ -9,6 +9,7 @@ EVAL_RULE: dict = {}
 
 
 def define_evaluation(task_class: str) -> dict:
+    """Asks the LLM to generate a rubric of criteria that the graph must meet to be considered fully specialized for the given domain."""
     global EVAL_RULE
 
     response = openai.chat.completions.create(
@@ -55,6 +56,7 @@ def define_evaluation(task_class: str) -> dict:
     return EVAL_RULE
 
 def evaluate(graph: StemGraph, task_class: str, cycle: int, new_node: Node) -> tuple[bool, str]:
+    """Checks whether a newly proposed node is valid and useful, it rejects it if it breaks any of the quality rules."""
     global EVAL_RULE
 
     if not EVAL_RULE:
@@ -104,5 +106,6 @@ def evaluate(graph: StemGraph, task_class: str, cycle: int, new_node: Node) -> t
         return False, "Evaluator produced invalid response"
 
 def get_eval_rule() -> dict:
+    """Returns the current evaluation rubric so other parts of the code can read it without importing the global directly."""
     return EVAL_RULE
 

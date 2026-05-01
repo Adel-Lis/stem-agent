@@ -12,6 +12,7 @@ openai = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def get_primary_input(graph: StemGraph, node_id: str, context: Context) -> str:
+    """Finds what data to pass into a node, it uses the output of its upstream nodes if connected, otherwise falls back to the original user input."""
     feeds_into_sources = [
         e.source_id for e in graph.edges.values()
         if e.target_id == node_id and e.relation == EdgeRelation.feeds_into
@@ -30,6 +31,7 @@ def get_primary_input(graph: StemGraph, node_id: str, context: Context) -> str:
 
 
 def is_contradicted(graph: StemGraph, node_id: str) -> bool:
+    """Returns True if another node has marked this node as contradicted, meaning it should be skipped during traversal."""
     return any(
         e.target_id == node_id and e.relation == EdgeRelation.contradicts
         for e in graph.edges.values()
@@ -37,6 +39,7 @@ def is_contradicted(graph: StemGraph, node_id: str) -> bool:
 
 
 def execute_prompt_node(node_content: str, primary_input: str) -> str:
+    """Runs a prompt node by sending its content as the system prompt and the input data as the user message, then returns the LLM response."""
     messages = [
         {"role": "system", "content": node_content},
         {"role": "user", "content": primary_input},
@@ -46,6 +49,7 @@ def execute_prompt_node(node_content: str, primary_input: str) -> str:
 
 
 def execute_tool_node(node_content: str, primary_input: str) -> str:
+    """Looks up the tool by name in the registry and calls it with the input data, returning its output as a string."""
     tool_name = node_content.strip()
     try:
         tool = get_tool(tool_name)
@@ -55,6 +59,7 @@ def execute_tool_node(node_content: str, primary_input: str) -> str:
 
 
 def traverse(graph: StemGraph, task_input: str, task_class: str) -> str:
+    """Walks through the graph in order, executes each node with the right input, and returns the final node's output as the agent's answer."""
     context = Context(task_class=task_class, task_input=task_input)
 
     order = graph.get_traversal_order()
@@ -96,6 +101,7 @@ def traverse(graph: StemGraph, task_input: str, task_class: str) -> str:
 
 
 def run_traverser(task_class: str, task_input: str) -> str:
+    """Loads the saved checkpoint for a domain and runs the specialized agent on the given input."""
     graph, _ = load_latest_checkpoint(task_class)
 
     if graph is None:

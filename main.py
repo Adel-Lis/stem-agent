@@ -6,12 +6,14 @@ from agents.traverser import run_traverser
 
 
 def grow(task_class: str):
+    """Builds and grows a new stem agent for the given domain, saving the result as a checkpoint when done."""
     print(f"Starting stem agent for domain: '{task_class}'")
     graph = run_builder(task_class)
     print(f"\nGrowth complete. Agent specialized for '{task_class}'")
     return graph
 
 def run(task_class: str, task_input: str):
+    """Loads the specialized agent for the given domain and runs it on the provided input, printing the final answer."""
     print(f"\nRunning specialized agent for domain: '{task_class}'")
     output = run_traverser(task_class, task_input)
     print(f"\nAgent output:\n{output}")

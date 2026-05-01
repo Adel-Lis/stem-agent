@@ -14,6 +14,7 @@ openai = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
+    """Searches the web to learn about the task domain and adds the first domain knowledge node to the graph."""
     raw_results = web_search_raw(f"how to build an AI agent for {task_class}", max_results=MAX_SEARCH_RESULTS)
     search_summary = format_search_results(raw_results)
 
@@ -66,6 +67,7 @@ def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
 
 
 def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedback: str = None) -> tuple | None:
+    """Asks the builder LLM to propose one new node to add to the graph, using the current graph state and any feedback from the evaluator."""
     graph_summary = graph.to_json()
     tools_available = list_tools()
 
@@ -206,6 +208,7 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
 
 
 def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
+    """Runs the main growth cycle, it proposes nodes, evaluates them, and keeps growing until the agent is fully specialized or hits the cycle limit."""
     print(f"\n[BUILDER] Starting growth phase")
     cycle = 1
     feedback = None
@@ -274,6 +277,7 @@ def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
 
 
 def is_fully_specialized(graph: StemGraph, task_class: str) -> bool:
+    """Asks the LLM to check if the graph meets all the rubric criteria, returning True if the agent is ready to stop growing."""
     response = openai.chat.completions.create(
         model=MODEL,
         messages=[
@@ -307,6 +311,7 @@ def is_fully_specialized(graph: StemGraph, task_class: str) -> bool:
 
 
 def run_builder(task_class: str) -> StemGraph:
+    """Entry point for building a new stem agent, it sets up the initial graph, runs birth phase, then runs the growth loop."""
     graph = StemGraph()
 
     builder_node = Node(
