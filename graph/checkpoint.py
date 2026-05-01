@@ -7,7 +7,7 @@ from tools.registry import get_tool_codes, restore_tools_from_codes
 def _write_checkpoint(data: dict, filepath: str, label: str):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"Checkpoint [{label}] saved at: {filepath}")
+    print(f"  Checkpoint saved: {os.path.basename(filepath)}")
 
 def save_checkpoint(graph: StemGraph, task_class: str, version: int):
     folder = os.path.join("outputs", task_class.lower().replace(" ", "_"))
@@ -54,7 +54,7 @@ def load_latest_checkpoint(task_class: str) -> tuple[StemGraph, int | str]:
     # Prefer the fully-specialized checkpoint when it exists
     final_path = os.path.join(folder, "checkpoint_final.json")
     if os.path.exists(final_path):
-        print(f"[CHECKPOINT] Loading final checkpoint for '{task_class}'")
+        print(f"  Loading checkpoint for '{task_class}'")
         return _load_from_file(final_path), "final"
 
     # Fall back to the highest-versioned intermediate checkpoint

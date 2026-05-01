@@ -14,8 +14,6 @@ openai = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
-    print(f"Stem cell starts learning about '{task_class}'")
-
     raw_results = web_search_raw(f"how to build an AI agent for {task_class}", max_results=MAX_SEARCH_RESULTS)
     search_summary = format_search_results(raw_results)
 
@@ -35,9 +33,15 @@ def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
     domain_summary = response.choices[0].message.content
 
     domain_instruction = (
-        f"You are a specialist in {task_class}. "
-        f"The following is your domain knowledge base:\n\n{domain_summary}\n\n"
-        f"Given the user's input, apply your domain expertise to produce a structured initial analysis "
+        f"You are a specialized {task_class} agent. "
+        f"You assist ONLY with {task_class}-related tasks. "
+        f"You are NOT a general-purpose AI assistant and must never present yourself as one. "
+        f"If asked what you are or what you can do, describe only your {task_class} capabilities — nothing else. "
+        f"If the user's input is unrelated to {task_class}, respond with exactly: "
+        f"'I am a specialized {task_class} agent. I can only assist with {task_class}-related tasks. "
+        f"This request is outside my domain.' Do not attempt to answer it. "
+        f"\n\nYour {task_class} domain knowledge base:\n\n{domain_summary}\n\n"
+        f"For in-scope inputs: apply your domain expertise to produce a structured initial analysis "
         f"that identifies the key aspects of the problem, the relevant concepts that apply, "
         f"and the approach that best fits this domain."
     )
@@ -50,7 +54,6 @@ def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
     )
     graph.add_node(domain_node)
 
-    print(f"Nodes in graph at birth phase: {[(id, n.role) for id, n in graph.nodes.items()]}")
     builder_node_id = next(idx for idx, n in graph.nodes.items() if n.role == NodeRole.builder)
     graph.add_edge(Edge(
         source_id=builder_node_id,
@@ -58,7 +61,7 @@ def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
         relation=EdgeRelation.feeds_into
     ))
 
-    print(f"Domain knowledge node created: [{domain_node.id}] | Stem cell expanded")
+    print(f"[BUILDER] {task_class} Stem Agent has born and ready to learn.")
     return graph
 
 
@@ -137,6 +140,13 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
                     "A strategy node may only instruct JSON output if its immediate next node is a tool that requires structured input to function. "
                     "When in doubt, use natural language prose. "
 
+                    "DOMAIN SCOPE RULE: "
+                    f"This agent is a specialist in {task_class} ONLY. "
+                    "Every strategy node you write must stay strictly within that domain. "
+                    "The terminal strategy node must include this instruction in its content: "
+                    f"'If the input signals that the original request was outside the {task_class} domain, "
+                    f"reply only with: I am a specialized {task_class} agent and cannot assist with that request.' "
+
                     "CONNECTIVITY: "
                     f"Existing nodes you can connect to: {[(nid, n.role.value) for nid, n in graph.nodes.items()]} "
                     "Always connect your new node to an existing node. Never leave it isolated. "
@@ -165,27 +175,24 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
         ]
     )
     raw = response.choices[0].message.content.strip()
-    print(f"[BUILDER RAW RESPONSE] {raw}")
 
     try:
         proposal = json.loads(raw)
     except json.JSONDecodeError as e:
-        print(f"Builder produced invalid JSON, cycle is skipped. Error: {e}")
+        print(f"  Invalid JSON from builder, skipping cycle. Error: {e}")
         return None
-
-    print(f"[BUILDER PROPOSAL] {proposal}")
 
     if proposal.get("type") == "tool":
         tool_name = proposal.get("tool_name") or proposal.get("content", "").strip()
 
         if tool_name in list_tools():
-            # Existing tool — just ensure content is the clean name
+            # Existing tool
             proposal["content"] = tool_name
         else:
-            # New tool — content must be Python function code
+            # New tool
             success = register_tool_from_code(tool_name, proposal["content"])
             if not success:
-                print(f"Tool registration failed for '{tool_name}', cycle is skipped.")
+                print(f"  [BUILDER] Tool registration failed for '{tool_name}', skipping cycle.")
                 return None
 
     node = Node(
@@ -195,17 +202,16 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
         version=cycle
     )
 
-    print(f"[BUILDER] Node created: {node.role} ({node.node_type})")
     return node, proposal.get("connect_to"), proposal.get("relation")
 
 
 def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
-    print(f"\nGrowth Loop Started for '{task_class}' - stem cell is learning")
+    print(f"\n[BUILDER] Starting growth phase")
     cycle = 1
     feedback = None
 
     while cycle <= MAX_GROWTH_CYCLES:
-        print(f"\n-- Cycle {cycle} --")
+        print(f"\n[CYCLE {cycle}]")
 
         isolated = graph.get_isolated_nodes()
         if isolated:
@@ -217,7 +223,7 @@ def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
         result = propose_node(graph, task_class, cycle, complete_feedback)
 
         if result is None:
-            print("No valid proposal, continuing to next cycle")
+            print("  [BUILDER] No valid proposal, skipping")
             cycle += 1
             continue
 
@@ -234,28 +240,25 @@ def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
                 )
                 graph.add_edge(edge)
             except Exception as e:
-                print(f"Edge creation failed: {e}")
+                print(f"  Edge creation failed: {e}")
                 del graph.nodes[node.id]
                 graph.graph.remove_node(node.id)
                 cycle += 1
                 continue
 
-        print(f"[GRAPH STATE] Nodes: {[(nid[:8], n.role.value) for nid, n in graph.nodes.items()]}")
-        print(f"[GRAPH STATE] Edges: {[(e.source_id[:8], e.relation.value, e.target_id[:8]) for e in graph.edges.values()]}")
-
         passed, reason = evaluate(graph, task_class, cycle, node)
 
         if passed:
-            print(f"Cycle {cycle} approved")
+            print(f"  [BUILDER] Approved: {node.role.value} node added. Content: {node.content[:60].rstrip()}...")
             feedback = None
             if cycle >= MIN_GROWTH_CYCLES:
                 save_checkpoint(graph, task_class, cycle)
                 if is_fully_specialized(graph, task_class):
                     save_final_checkpoint(graph, task_class)
-                    print(f"Agent fully specialized after {cycle} cycles")
+                    print(f"\n[BUILDER] Stem Agent fully specialized after {cycle} cycles")
                     return graph
         else:
-            print(f"Cycle {cycle} rejected: {reason}")
+            print(f"  [BUILDER] Rejected: {reason}")
             feedback = reason
             graph.graph.remove_node(node.id)
             del graph.nodes[node.id]
@@ -266,7 +269,7 @@ def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
 
         cycle += 1
 
-    print("Max growth cycles reached")
+    print("[BUILDER] Max growth cycles reached")
     return graph
 
 
@@ -297,9 +300,6 @@ def is_fully_specialized(graph: StemGraph, task_class: str) -> bool:
 
     try:
         result = json.loads(raw)
-
-        if result.get("done"):
-            print(f"[EVALUATOR] Graph fully specialized: {result.get('reason')}")
 
         return result.get("done", False)
     except json.JSONDecodeError:

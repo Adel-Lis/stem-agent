@@ -71,10 +71,10 @@ def register_tool_from_code(name: str, code: str) -> bool:
             return False
         TOOL_REGISTRY[name] = func
         TOOL_CODE_REGISTRY[name] = code
-        print(f"Tool registered: {name}")
+        print(f"  Tool registered: {name}")
         return True
     except Exception as e:
-        print(f"Failed to register tool '{name}': {e}")
+        print(f"  Failed to register tool '{name}': {e}")
         return False
 
 def restore_tools_from_codes(tool_codes: dict[str, str]):
@@ -87,7 +87,7 @@ def get_tool_codes() -> dict[str, str]:
 
 def register_tool(name: str, func: callable):
     TOOL_REGISTRY[name] = func
-    print(f"Tool {name} registered!")
+    print(f"  Tool registered: {name}")
 
 def list_tools() -> list[str]:
     return list(TOOL_REGISTRY.keys())

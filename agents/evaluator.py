@@ -42,9 +42,9 @@ def define_evaluation(task_class: str) -> dict:
 
     try:
         EVAL_RULE = json.loads(raw)
-        print(f"[EVALUATOR] Rubric is devined: {EVAL_RULE}")
+        print(f"  [EVALUATOR] Evaluation rules defined: \n{EVAL_RULE["criteria"]}\n")
     except json.JSONDecodeError:
-        print("Failed to parse rubric, using default")
+        print("  [EVALUATOR] Failed to parse rules, using default\n")
         EVAL_RULE = {"criteria": [
             "The graph contains at least one strategy node",
             "The graph contains at least two domain_knowledge nodes",

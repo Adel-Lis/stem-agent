@@ -69,10 +69,16 @@ def traverse(graph: StemGraph, task_input: str, task_class: str) -> str:
             continue
 
         if is_contradicted(graph, nID):
-            print(f"[TRAVERSER] Skipping node {node.role.value} — incoming contradicts edge signals unresolved conflict")
+            print(f"Skipping {node.role.value} — contradicted")
             continue
 
-        print(f"[TRAVERSER] Executing node: {node.role} ({node.node_type})")
+        if node.node_type == NodeType.tool:
+            tool_label = node.content.strip().split('\n')[0].replace('def ', '').split('(')[0]
+            print(f"[tool] {tool_label}")
+        elif node.role == NodeRole.domain_kn:
+            print(f"[domain_knowledge] {node.content[:80].rstrip()}...")
+        else:
+            print(f"[strategy] {node.content[:100].rstrip()}...")
 
         primary_input = get_primary_input(graph, nID, context)
 
@@ -90,11 +96,9 @@ def traverse(graph: StemGraph, task_input: str, task_class: str) -> str:
 
 
 def run_traverser(task_class: str, task_input: str) -> str:
-    graph, version = load_latest_checkpoint(task_class)
+    graph, _ = load_latest_checkpoint(task_class)
 
     if graph is None:
         raise ValueError(f"No checkpoint found for task class '{task_class}'. Run the builder first.")
 
-    print(f"[TRAVERSER] Loaded checkpoint version {version} for '{task_class}'")
-    print(f"[TRAVERSER] Start traversing")
     return traverse(graph, task_input, task_class)
