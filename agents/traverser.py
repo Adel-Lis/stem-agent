@@ -22,7 +22,9 @@ def get_primary_input(graph: StemGraph, node_id: str, context: Context) -> str:
             if h.get("node_id") in feeds_into_sources
         ]
         if source_outputs:
-            return "\n\n".join(source_outputs)
+            combined = "\n\n".join(source_outputs)
+            combined += f"\n\n---\nOriginal user input:\n{context.task_input}"
+            return combined
     # Fall back to the most recent node output, then the raw task input
     return context.history[-1]["content"] if context.history else context.task_input
 

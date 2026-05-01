@@ -126,6 +126,17 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
                     "Only use it when you are certain two nodes produce incompatible outputs. "
                     "validates: reserved for the evaluator. Do NOT use this. "
 
+                    "PIPELINE COMPLETENESS RULE: "
+                    "A tool node must NEVER be the last node in the pipeline. "
+                    "Every tool node must have a downstream strategy node connected via feeds_into that interprets its output. "
+                    "If the current graph ends with a tool node, your next proposal MUST be a strategy node connected to that tool node via feeds_into. "
+
+                    "OUTPUT FORMAT RULE: "
+                    "The terminal strategy node — the last strategy node in the pipeline that has no downstream node — is what the user reads directly. "
+                    "Its content MUST instruct natural language output. NEVER write 'Output as JSON', 'Return a JSON object', 'Output a JSON array', or any structured-data instruction for the terminal node. "
+                    "A strategy node may only instruct JSON output if its immediate next node is a tool that requires structured input to function. "
+                    "When in doubt, use natural language prose. "
+
                     "CONNECTIVITY: "
                     f"Existing nodes you can connect to: {[(nid, n.role.value) for nid, n in graph.nodes.items()]} "
                     "Always connect your new node to an existing node. Never leave it isolated. "
