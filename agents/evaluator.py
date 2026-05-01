@@ -2,6 +2,7 @@ import json
 from openai import OpenAI
 from config import MODEL_EVAL, OPENAI_API_KEY
 from graph.graph import StemGraph
+from graph.node import Node
 
 openai = OpenAI(api_key=OPENAI_API_KEY)
 EVAL_RULE: dict = {}
@@ -20,13 +21,13 @@ def define_evaluation(task_class: str) -> dict:
                     "to assess whether an AI agent's knowledge graph is fully specialized for that domain. "
                     "The graph nodes can ONLY have these roles: builder, evaluator, domain_knowledge, strategy, tool. "
                     "The graph nodes can ONLY have these types: prompt, tool. "
-                    "Your criteria must ONLY reference these exact roles and types, nothing else. "
-                    "Define a maximum of 4 simple criteria. Examples of good criteria: "
-                    "'The graph contains at least one strategy node', "
-                    "'The graph contains at least two domain_knowledge nodes', "
-                    "'All tool type nodes are edge nodes', "
+                    "You MUST include these two criteria exactly as written: "
+                    "'The graph contains at least one tool type node', "
+                    "'All strategy node content is an actionable LLM instruction (begins with Given/Analyze/Extract/You have received/etc.) and not a general description'. "
+                    "You may add up to 2 more structural criteria. Examples: "
+                    "'The graph contains at least one domain_knowledge node', "
                     "'The graph is fully connected with no isolated nodes'. "
-                    "Do NOT invent new node types or roles. Do NOT check for content quality. "
+                    "Do NOT invent new node types or roles. "
                     "Respond ONLY with a valid JSON object with one field: "
                     "criteria (a list of strings). No explanation or markdown."
                 )
@@ -53,7 +54,7 @@ def define_evaluation(task_class: str) -> dict:
 
     return EVAL_RULE
 
-def evaluate(graph: StemGraph, task_class: str, cycle: int) -> tuple[bool, str]:
+def evaluate(graph: StemGraph, task_class: str, cycle: int, new_node: Node) -> tuple[bool, str]:
     global EVAL_RULE
 
     if not EVAL_RULE:
@@ -66,11 +67,15 @@ def evaluate(graph: StemGraph, task_class: str, cycle: int) -> tuple[bool, str]:
                 "role": "system",
                 "content": (
                     "You are an evaluator agent. Your only job is to assess whether "
-                    "the most recently added node is a valid and useful addition to the graph. "
+                    "the node provided below is a valid and useful addition to the graph. "
                     "Do NOT check whether the full graph is complete or satisfies all criteria. "
-                    "Only check: is this node the right type, does it have a valid role, "
-                    "is it properly connected to at least one other node, "
-                    "and does it contribute something meaningful given the current graph state. "
+                    "Check ALL of the following and fail if any one does not hold: "
+                    "1. The node has a valid type (prompt or tool) and a valid role (domain_knowledge, strategy, or tool). "
+                    "2. The node is connected to at least one other node in the graph. "
+                    "3. If the node is type 'prompt': its content must be an actionable LLM instruction — "
+                    "it must tell the model what to do with an input (e.g. begins with Given/Analyze/Extract/You have received/etc.). "
+                    "REJECT if the content reads like a general description, methodology overview, or advice. "
+                    "4. If the node is type 'tool': its content must be either an existing tool name or valid Python code. "
                     "Respond ONLY with a valid JSON object with two fields: "
                     "passed (boolean) and reason (string). No explanation or markdown."
                 )
@@ -80,7 +85,8 @@ def evaluate(graph: StemGraph, task_class: str, cycle: int) -> tuple[bool, str]:
                 "content": (
                     f"Task domain: {task_class}\n"
                     f"Cycle: {cycle}\n"
-                    f"Current graph:\n{graph.to_json()}"
+                    f"Node to evaluate:\n{json.dumps(new_node.model_dump(), indent=2)}\n"
+                    f"Full graph context:\n{graph.to_json()}"
                 )
             }
         ]

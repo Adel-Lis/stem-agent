@@ -5,7 +5,7 @@ from config import MODEL, MAX_SEARCH_RESULTS, MAX_GROWTH_CYCLES, MIN_GROWTH_CYCL
 from graph.graph import StemGraph
 from graph.node import Node, NodeType, NodeRole
 from graph.edge import Edge, EdgeRelation
-from graph.checkpoint import save_checkpoint
+from graph.checkpoint import save_checkpoint, save_final_checkpoint
 from tools.registry import web_search_raw, format_search_results, register_tool_from_code, list_tools
 from agents.evaluator import evaluate, define_evaluation, get_eval_rule
 
@@ -34,10 +34,18 @@ def birth_phase(graph: StemGraph, task_class: str) -> StemGraph:
     )
     domain_summary = response.choices[0].message.content
 
+    domain_instruction = (
+        f"You are a specialist in {task_class}. "
+        f"The following is your domain knowledge base:\n\n{domain_summary}\n\n"
+        f"Given the user's input, apply your domain expertise to produce a structured initial analysis "
+        f"that identifies the key aspects of the problem, the relevant concepts that apply, "
+        f"and the approach that best fits this domain."
+    )
+
     domain_node = Node(
         node_type=NodeType.prompt,
         role=NodeRole.domain_kn,
-        content=domain_summary,
+        content=domain_instruction,
         version=0
     )
     graph.add_node(domain_node)
@@ -82,10 +90,17 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
 
                     "NODE CONTENT RULES: "
                     "For prompt nodes: content must be an actionable instruction telling an LLM exactly what to do "
-                    "with the input it receives at inference time. "
-                    "Example of GOOD content: 'Given the research question provided, identify the key sub-topics "
-                    "and output a numbered list of specific search queries to investigate each one.' "
-                    "Example of BAD content: 'Deep research involves gathering information from multiple sources.' "
+                    "with the input it receives at inference time. It must describe a concrete transformation: "
+                    "what input arrives, what processing happens, and what the output must look like. "
+                    "GOOD examples — write content like these: "
+                    "'Given the research question, identify 3-5 key sub-topics. For each sub-topic, write one specific search query. Output as a numbered list.' "
+                    "'You have received search results. Extract the most relevant facts and claims. Discard opinions and promotional content. Return a bullet-point summary.' "
+                    "'Given the compiled findings, identify contradictions or gaps in the evidence. Flag each one with a brief explanation of why it matters.' "
+                    "BAD examples — NEVER write content like these: "
+                    "'Deep research involves gathering information from multiple sources.' "
+                    "'After defining the scope, identify relevant sources and prioritize them.' "
+                    "'Continuously evaluate and refine research methodologies.' "
+                    "The content is executed as a system prompt at inference time. Write it as a direct instruction to an LLM that has just received some input to process. "
 
                     "For tool nodes there are two cases: "
                     "1. Referencing an existing tool from the registry — set content to ONLY the exact function name "
@@ -205,7 +220,7 @@ def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
         print(f"[GRAPH STATE] Nodes: {[(nid[:8], n.role.value) for nid, n in graph.nodes.items()]}")
         print(f"[GRAPH STATE] Edges: {[(e.source_id[:8], e.relation.value, e.target_id[:8]) for e in graph.edges.values()]}")
 
-        passed, reason = evaluate(graph, task_class, cycle)
+        passed, reason = evaluate(graph, task_class, cycle, node)
 
         if passed:
             print(f"Cycle {cycle} approved")
@@ -213,6 +228,7 @@ def growth_loop(graph: StemGraph, task_class: str) -> StemGraph:
             if cycle >= MIN_GROWTH_CYCLES:
                 save_checkpoint(graph, task_class, cycle)
                 if is_fully_specialized(graph, task_class):
+                    save_final_checkpoint(graph, task_class)
                     print(f"Agent fully specialized after {cycle} cycles")
                     return graph
         else:

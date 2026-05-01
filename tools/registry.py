@@ -1,4 +1,29 @@
+import builtins as _builtins
 from ddgs import DDGS
+
+
+# Restricted execution environment for dynamically registered tools.
+# Prevents access to os, subprocess, open, eval, etc. while keeping
+# the primitives and the three explicitly allowed third-party imports.
+_SAFE_BUILTINS = {
+    name: getattr(_builtins, name)
+    for name in [
+        'abs', 'bool', 'chr', 'dict', 'enumerate', 'filter', 'float',
+        'frozenset', 'int', 'isinstance', 'issubclass', 'iter', 'len',
+        'list', 'map', 'max', 'min', 'next', 'ord', 'print', 'range',
+        'reversed', 'round', 'set', 'slice', 'sorted', 'str', 'sum',
+        'tuple', 'type', 'zip', 'True', 'False', 'None',
+        'Exception', 'ValueError', 'TypeError', 'KeyError', 'IndexError',
+    ]
+}
+_ALLOWED_IMPORTS = {"json", "re", "ddgs"}
+
+def _safe_import(name, *args, **kwargs):
+    if name not in _ALLOWED_IMPORTS:
+        raise ImportError(f"Import of '{name}' is not permitted in tool code")
+    return __import__(name, *args, **kwargs)
+
+_SAFE_BUILTINS["__import__"] = _safe_import
 
 
 # Internal low-level functions that is used in the builder birth phase
@@ -34,7 +59,7 @@ def get_tool(name: str) -> callable:
 
 def register_tool_from_code(name: str, code: str) -> bool:
     try:
-        namespace = {}
+        namespace = {"__builtins__": _SAFE_BUILTINS}
         exec(code, namespace)
         func = namespace.get(name)
         if func is None or not callable(func):

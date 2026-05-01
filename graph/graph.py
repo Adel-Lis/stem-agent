@@ -41,7 +41,19 @@ class StemGraph:
     
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
-    
+
+    def to_inference_dict(self) -> dict:
+        """
+        The goal is to have a graph with only nodes with roles domain_knowledge, statgy and tool
+        """
+        inference_roles = {"domain_knowledge", "strategy", "tool"}
+        inference_ids = {nid for nid, n in self.nodes.items() if n.role.value in inference_roles}
+        return {
+            "nodes": [n.model_dump() for nid, n in self.nodes.items() if nid in inference_ids],
+            "edges": [e.model_dump() for e in self.edges.values()
+                      if e.source_id in inference_ids and e.target_id in inference_ids]
+        }
+
     def is_connected(self) -> bool:
         return nx.is_weakly_connected(self.graph)
     
