@@ -86,7 +86,7 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
 
                     "NODE TYPES AND ROLES: "
                     "A node can be type 'prompt' (role: domain_knowledge or strategy) or type 'tool' (role: tool). "
-                    "Tool nodes must always be edge nodes — they can only be targets, never sources. "
+                    "Tool nodes sit in the middle of a pipeline: a strategy feeds a query into them, and they feed results into the next strategy. "
 
                     "NODE CONTENT RULES: "
                     "For prompt nodes: content must be an actionable instruction telling an LLM exactly what to do "
@@ -113,6 +113,18 @@ def propose_node(graph: StemGraph, task_class: str, cycle: int, evaluator_feedba
 
                     "TOOLS ALREADY IN REGISTRY (reference these by name only, do not recreate them): "
                     f"{tools_available} "
+
+                    "EDGE TYPE RULES — choose the relation precisely: "
+                    "feeds_into: the source's output IS the primary data that the target will process. "
+                    "Use this whenever data must flow from one node to the next. "
+                    "Tool pipeline pattern: strategy --feeds_into--> tool --feeds_into--> strategy. "
+                    "The strategy before the tool sends it a search query; the strategy after the tool receives and analyzes its results. "
+                    "requires: the source must finish before the target runs, but its output is NOT the target's input. "
+                    "Use only for ordering constraints. NEVER use requires for tool nodes. "
+                    "contradicts: signals a genuine logical conflict — two nodes whose instructions cannot coexist. "
+                    "NEVER use contradicts between domain_knowledge nodes or between strategy nodes that complement each other. "
+                    "Only use it when you are certain two nodes produce incompatible outputs. "
+                    "validates: reserved for the evaluator. Do NOT use this. "
 
                     "CONNECTIVITY: "
                     f"Existing nodes you can connect to: {[(nid, n.role.value) for nid, n in graph.nodes.items()]} "

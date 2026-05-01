@@ -21,9 +21,6 @@ class StemGraph:
         if source is None or target is None:
             raise ValueError("Both source and target nodes must exist before adding an edge")
         
-        if source.node_type == NodeType.tool:
-            raise ValueError("Tool nodes cannot be source nodes, they can only be edge nodes")
-        
         self.edges[edge.id] = edge
         self.graph.add_edge(edge.source_id, edge.target_id, relation=edge.relation)
 

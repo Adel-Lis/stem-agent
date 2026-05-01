@@ -23,7 +23,8 @@ def get_primary_input(graph: StemGraph, node_id: str, context: Context) -> str:
         ]
         if source_outputs:
             return "\n\n".join(source_outputs)
-    return context.task_input
+    # Fall back to the most recent node output, then the raw task input
+    return context.history[-1]["content"] if context.history else context.task_input
 
 
 def is_contradicted(graph: StemGraph, node_id: str) -> bool:
