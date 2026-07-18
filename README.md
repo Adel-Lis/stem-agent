@@ -2,9 +2,7 @@
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white) ![OpenAI](https://img.shields.io/badge/OpenAI-GPT-412991?logo=openai)
 
-> This project is submitted as part of the interview process for the **AI Engineering Intern position at JetBrains**.
-> Built and designed entirely by **Adel Lis**.
-> FOR THE FULL END REPORT, PLEASE READ THE `Adel_Lis_Stem_Agent_Report_JetBrains.pdf` in this repository
+> A framework for growing self-specializing LLM agents: instead of hand-writing an agent for every domain, Stem Agent starts from a generic "stem" and grows it into a domain specialist. For the full technical report, see `Adel_Lis_Stem_Agent_Report.pdf` in this repository.
 
 ---
 
