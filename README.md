@@ -105,7 +105,3 @@ stem_agent/
 ├── main.py              # CLI entry point
 └── .env                 # Your OpenAI API key (not committed)
 ```
-
----
-
-© 2026 Adel Lis. All rights reserved.
